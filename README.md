@@ -4,6 +4,16 @@ Type a sentence. Get a working UI component.
 
 **Live Demo → [agentic-ui-engine-web.vercel.app](https://agentic-ui-engine-web.vercel.app)**
 
+## Screenshots
+
+### Web
+![web](apps/web/public/screenshot-web.jpg)
+
+### Mobile (React Native)
+| Login Form | Dashboard |
+|-----------|-----------|
+| ![login](apps/mobile/assets/screenshots/mobile-login.jpg) | ![dashboard](apps/mobile/assets/screenshots/mobile-dashboard.jpg) |
+
 ---
 
 ## Overview
@@ -17,7 +27,7 @@ Built as a full-stack project to explore AI-driven developer tooling, cross-plat
 - Natural language → rendered UI in under 3 seconds
 - Interactive components — form validation, button actions, state management
 - One-click code export (React + Tailwind)
-- 9 component types: Button, Input, Card, List, Badge, Hero, Stat, Avatar, Divider
+- 13 component types: Button, Input, Card, List, Badge, Hero, Stat, Avatar, Divider, Table, Navbar, Alert, Progress
 - Monorepo structure with shared logic across Web and Mobile
 
 ## Stack
@@ -27,7 +37,7 @@ Built as a full-stack project to explore AI-driven developer tooling, cross-plat
 | Frontend | Next.js 14, TypeScript, Tailwind CSS |
 | Mobile | Expo (React Native) |
 | Backend | Node.js, Express |
-| AI | OpenAI GPT-4o-mini |
+| AI | OpenAI GPT-4o |
 | Infra | Vercel + Railway |
 
 ## How it works
@@ -35,7 +45,7 @@ Built as a full-stack project to explore AI-driven developer tooling, cross-plat
 The core is a **Component DSL** — a JSON schema designed to bridge natural language and rendered UI components.
 
 ```
-Prompt → GPT-4o-mini → Component DSL (JSON) → React
+Prompt → GPT-4o → Component DSL (JSON) → React / React Native
 ```
 
 ```json
@@ -66,13 +76,16 @@ cd backend && npm run dev
 
 # Frontend (new terminal)
 cd apps/web && npm run dev
+
+# Mobile (new terminal)
+cd apps/mobile && npx expo start
 ```
 
 ## Structure
 
 ```
 ├── apps/web        # Next.js frontend
-├── apps/mobile     # Expo (in progress)
+├── apps/mobile     # Expo React Native app
 ├── packages/shared # Shared hooks and types
 └── backend         # Express API + AI service
 ```
