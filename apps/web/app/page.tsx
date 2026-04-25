@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { generateUI } from '@/lib/api'
 import { DSLRenderer } from '@/components/renderer/DSLRenderer'
+import { CodeExport } from '@/components/renderer/CodeExport'
 
 export default function Home() {
   const [prompt, setPrompt] = useState('')
@@ -114,6 +115,7 @@ export default function Home() {
             </div>
           </div>
         )}
+        {schema && <CodeExport schema={schema} />}
       </div>
     </main>
   )
