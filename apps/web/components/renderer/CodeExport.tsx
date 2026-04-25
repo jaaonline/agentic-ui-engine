@@ -6,27 +6,75 @@ function schemaToCode(schema: any): string {
   if (!schema) return ''
 
   const components = schema.components.map((comp: any) => {
-    const props = Object.entries(comp.props || {})
-      .map(([key, value]) => `  ${key}="${value}"`)
-      .join('\n')
+    const props = comp.props || {}
 
     switch (comp.type) {
       case 'button':
-        return `<button className="px-4 py-2 bg-blue-600 text-white rounded-md">\n  ${comp.props.label || 'Button'}\n</button>`
+        return `<button className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-500">
+  ${props.label || 'Button'}
+</button>`
       case 'input':
-        return `<input\n  type="${comp.props.inputType || 'text'}"\n  placeholder="${comp.props.placeholder || ''}"\n  className="border rounded-md px-3 py-2 w-full"\n/>`
+        return `<div className="flex flex-col gap-1.5">
+  ${props.label ? `<label className="text-sm font-medium text-gray-700">${props.label}</label>` : ''}
+  <input
+    type="${props.inputType || 'text'}"
+    placeholder="${props.placeholder || ''}"
+    className="border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+  />
+</div>`
       case 'card':
-        return `<div className="border rounded-lg p-4">\n  <h3>${comp.props.title || 'Card'}</h3>\n  <p>${comp.props.subtitle || ''}</p>\n</div>`
+        return `<div className="border border-gray-200 rounded-xl p-5 shadow-sm">
+  ${props.title ? `<h3 className="font-semibold text-gray-900">${props.title}</h3>` : ''}
+  ${props.subtitle ? `<p className="text-sm text-blue-600 mt-0.5">${props.subtitle}</p>` : ''}
+  ${props.description ? `<p className="text-sm text-gray-500 mt-2">${props.description}</p>` : ''}
+</div>`
       case 'list':
-        return `<ul className="divide-y border rounded-md">\n  {items.map(item => <li key={item}>{item}</li>)}\n</ul>`
+        return `<ul className="rounded-xl border border-gray-200 overflow-hidden">
+  ${(props.items || []).map((item: string) => `<li className="px-4 py-3 text-sm text-gray-700 border-b border-gray-100 last:border-0">${item}</li>`).join('\n  ')}
+</ul>`
       case 'badge':
-        return `<span className="px-2 py-1 bg-gray-100 rounded text-sm">\n  ${comp.props.label || 'Badge'}\n</span>`
+        return `<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+  ${props.label || 'Badge'}
+</span>`
+      case 'hero':
+        return `<div className="text-center py-8">
+  ${props.title ? `<h1 className="text-3xl font-bold text-gray-900">${props.title}</h1>` : ''}
+  ${props.subtitle ? `<p className="text-base text-gray-500 mt-3">${props.subtitle}</p>` : ''}
+  ${props.ctaLabel ? `<button className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium">${props.ctaLabel}</button>` : ''}
+</div>`
+      case 'stat':
+        return `<div className="border border-gray-200 rounded-xl p-4">
+  <p className="text-xs text-gray-500 uppercase tracking-wide">${props.label || ''}</p>
+  <p className="text-2xl font-bold text-gray-900 mt-1">${props.value || ''}</p>
+</div>`
+      case 'avatar':
+        return `<div className="flex items-center gap-3 p-3">
+  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-600">
+    ${props.initials || props.name?.charAt(0) || '?'}
+  </div>
+  <div>
+    ${props.name ? `<p className="text-sm font-semibold text-gray-900">${props.name}</p>` : ''}
+    ${props.role ? `<p className="text-xs text-gray-500">${props.role}</p>` : ''}
+  </div>
+</div>`
+      case 'divider':
+        return `<div className="flex items-center gap-3 py-1">
+  <div className="flex-1 h-px bg-gray-200"/>
+  ${props.label ? `<span className="text-xs text-gray-400">${props.label}</span>` : ''}
+  <div className="flex-1 h-px bg-gray-200"/>
+</div>`
       default:
         return `<div />`
     }
   }).join('\n\n')
 
-  return `export default function GeneratedComponent() {\n  return (\n    <div className="flex flex-col gap-4">\n      ${components.split('\n').join('\n      ')}\n    </div>\n  )\n}`
+  return `export default function GeneratedComponent() {
+  return (
+    <div className="flex flex-col gap-4">
+      ${components.split('\n').join('\n      ')}
+    </div>
+  )
+}`
 }
 
 export function CodeExport({ schema }: { schema: any }) {
