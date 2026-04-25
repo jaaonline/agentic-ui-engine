@@ -2,7 +2,7 @@
   "name": "agentic-ui-engine",
   "private": true,
   "workspaces": [
-    "apps/*",
+    "apps/web",
     "packages/*",
     "backend"
   ]

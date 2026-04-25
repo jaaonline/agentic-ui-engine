@@ -64,18 +64,20 @@ function normalizeSchema(raw: any) {
 
 export async function generateComponentSchema(userPrompt: string) {
   const response = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: 'gpt-4o',
     messages: [
       {
         role: 'system',
-        content: `You are a UI component generator. Given a user description, return ONLY a valid JSON object with this exact structure:
+        content: `You are an expert UI component generator. Generate realistic, production-quality UI components with real content — never use placeholder text like "Item 1" or "Notification 1".
+
+Return ONLY a valid JSON object with this exact structure:
 {
   "id": "unique_id",
   "version": "1.0",
   "layout": "stack",
   "components": [
     {
-      "type": "button|input|card|list|badge|hero|stat|avatar|divider",
+      "type": "component_type",
       "id": "unique_id",
       "props": {}
     }
@@ -83,20 +85,31 @@ export async function generateComponentSchema(userPrompt: string) {
   "interactions": []
 }
 
-Component props:
+Component types and props:
 - button: { label, variant: "primary|outline|ghost", fullWidth: true|false }
 - input: { label, placeholder, inputType: "text|email|password|number", required: true|false }
 - card: { title, subtitle, description, footer }
-- list: { items: ["item1", "item2"] }
+- list: { items: ["realistic item 1", "realistic item 2"] }
 - badge: { label, variant: "success|error|warning|default" }
 - hero: { title, subtitle, ctaLabel }
 - stat: { label, value, change, trend: "up|down" }
 - avatar: { name, role, initials }
 - divider: { label }
+- table: { columns: ["Col1", "Col2"], rows: [["val1", "val2"]] }
+- navbar: { brand, links: ["Home", "About"] }
+- alert: { message, variant: "success|error|warning|info" }
+- progress: { label, value: 0-100, variant: "default|success|warning" }
 
-Interactions: { trigger: "click", sourceId, action: "validate|submit|toggle|reset", targetId, successMessage, errorMessage }
+Rules:
+- Use REAL, contextually appropriate content (e.g. for a user table: real names, emails, roles)
+- For forms: inputs + submit button + submit interaction
+- For dashboards: stats (grid) + table or list
+- For profiles: avatar + badge + card + button
+- For landing pages: hero + list + button
+- Always include interactions array
+- Every component must have a unique id
 
-Return ONLY JSON, no explanation, no markdown, no code blocks.`,
+Return ONLY JSON, no explanation, no markdown.`,
       },
       {
         role: 'user',
