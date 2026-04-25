@@ -4,7 +4,8 @@ import React, { useState } from 'react'
 import {
   ButtonComponent, InputComponent, CardComponent,
   ListComponent, BadgeComponent, HeroComponent,
-  StatComponent, AvatarComponent, DividerComponent
+  StatComponent, AvatarComponent, DividerComponent,
+  TableComponent, NavbarComponent, AlertComponent, ProgressComponent
 } from './ComponentMap'
 
 const componentMap: any = {
@@ -17,6 +18,10 @@ const componentMap: any = {
   stat: StatComponent,
   avatar: AvatarComponent,
   divider: DividerComponent,
+  table: TableComponent,
+  navbar: NavbarComponent,
+  alert: AlertComponent,
+  progress: ProgressComponent,
 }
 
 function groupComponents(components: any[]) {
@@ -61,7 +66,7 @@ export function DSLRenderer({ schema }: { schema: any }) {
     if (action === 'validate' || action === 'submit') {
       const requiredInputs = schema.components
         .map((c: any, idx: number) => ({ ...c, index: idx }))
-        .filter((c: any) => c.type === 'input' && c.props.required)
+        .filter((c: any) => c.type === 'input' && c.props?.required)
 
       const hasErrors = requiredInputs.some(
         (c: any) => !inputValues[`input-${c.index}`] || inputValues[`input-${c.index}`].trim() === ''
@@ -115,6 +120,8 @@ export function DSLRenderer({ schema }: { schema: any }) {
 
         const Component = componentMap[group.type]
         if (!Component) return null
+
+        if (!group.props || typeof group.props !== 'object') return null
 
         if (group.type === 'input') {
           const inputKey = `input-${group.originalIndex}`
