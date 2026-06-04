@@ -16,6 +16,7 @@ export default function Home() {
   const [username, setUsername] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [history, setHistory] = useState<any[]>([])
+  const [fromHistory, setFromHistory] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -180,17 +181,25 @@ export default function Home() {
           <div className="border border-white/10 rounded-2xl overflow-hidden mb-8">
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
               <span className="text-xs text-white/40">Generation History</span>
-              <button onClick={() => setShowHistory(false)} className="text-xs text-white/30 hover:text-white/60">✕</button>
-            </div>
+                <button 
+                  onClick={() => { 
+                    setShowHistory(false)
+                    setFromHistory(false)
+                    setSchema(null)
+                    setPrompt('')
+                  }} 
+                  className="text-xs text-white/30 hover:text-white/60"
+                >✕</button>            
+             </div>
             <div className="divide-y divide-white/5">
               {history.map((item: any) => (
                 <button
                   key={item.id}
                   onClick={() => {
-                    setPrompt(item.prompt)
                     if (item.schema) {
                       try { setSchema(JSON.parse(item.schema)) } catch {}
                     }
+                    setFromHistory(true)
                     setShowHistory(false)
                   }}
                   className="w-full text-left px-5 py-3 hover:bg-white/5 transition-colors"
@@ -205,7 +214,7 @@ export default function Home() {
           </div>
         )}
 
-        {schema && (
+        {schema && !showHistory && (
           <div className="border border-white/10 rounded-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/3">
               <div className="flex items-center gap-2">
@@ -214,7 +223,20 @@ export default function Home() {
                 <div className="w-2.5 h-2.5 rounded-full bg-white/20"/>
               </div>
               <span className="text-xs text-white/20">Preview</span>
-              <div className="w-16"/>
+              <button
+                onClick={() => {
+                  if (fromHistory) {
+                    setShowHistory(true)
+                    setFromHistory(false)
+                  } else {
+                    setSchema(null)
+                    setPrompt('')
+                  }
+                }}
+                className="text-xs text-white/30 hover:text-white/60 transition-colors"
+              >
+                ✕ Clear
+              </button>
             </div>
             <div className="bg-white p-8">
               <DSLRenderer schema={schema} prompt={prompt} />
@@ -222,7 +244,7 @@ export default function Home() {
           </div>
         )}
 
-        {schema && <CodeExport schema={schema} />}
+        {schema && !showHistory && <CodeExport schema={schema} />}
       </div>
     </main>
   )
