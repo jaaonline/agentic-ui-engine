@@ -42,7 +42,7 @@ function groupComponents(components: any[]) {
   return groups
 }
 
-export function DSLRenderer({ schema }: { schema: any }) {
+export function DSLRenderer({ schema, prompt }: { schema: any, prompt?: string }) {
   const [inputValues, setInputValues] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [success, setSuccess] = useState<Record<string, string>>({})

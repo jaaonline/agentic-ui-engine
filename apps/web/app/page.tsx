@@ -1,15 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { generateUI } from '@/lib/api'
 import { DSLRenderer } from '@/components/renderer/DSLRenderer'
 import { CodeExport } from '@/components/renderer/CodeExport'
 
+const JAVA_API = process.env.NEXT_PUBLIC_JAVA_API_URL || 'http://localhost:8080'
+
 export default function Home() {
   const [prompt, setPrompt] = useState('')
-  const [schema, setSchema] = useState(null)
+  const [schema, setSchema] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [username, setUsername] = useState<string | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const [history, setHistory] = useState<any[]>([])
+  const router = useRouter()
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedUsername = localStorage.getItem('username')
+      const isGuest = localStorage.getItem('isGuest')
+      if (!storedUsername && !isGuest) {
+        window.location.href = '/auth'
+        return
+      }
+      setUsername(storedUsername || 'Guest')
+    }
+  }, [])
 
   async function handleGenerate() {
     if (!prompt.trim()) return
@@ -18,6 +37,19 @@ export default function Home() {
     try {
       const result = await generateUI(prompt)
       setSchema(result)
+
+      const userId = localStorage.getItem('userId')
+      if (userId) {
+        await fetch(`${JAVA_API}/api/history/save`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt,
+            schema: JSON.stringify(result),
+            userId: Number(userId),
+          }),
+        })
+      }
     } catch (e) {
       setError('Failed to generate UI. Please try again.')
     } finally {
@@ -25,19 +57,67 @@ export default function Home() {
     }
   }
 
+  async function loadHistory() {
+    const userId = localStorage.getItem('userId')
+    if (!userId) return
+    const res = await fetch(`${JAVA_API}/api/history/user/${userId}`)
+    const data = await res.json()
+    setHistory(data)
+    setShowHistory(true)
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('token')
+    localStorage.removeItem('userId')
+    localStorage.removeItem('username')
+    localStorage.removeItem('isGuest')
+    setUsername(null)
+    setShowHistory(false)
+    window.location.href = '/auth'
+  }
+
   return (
     <main className="min-h-screen bg-[#0f0f0f] text-white">
-      {/* Header */}
       <header className="border-b border-white/10 px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center text-xs font-bold">A</div>
-          <span className="font-semibold text-sm tracking-tight">Agentic UI Engine</span>
+          
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="28" height="28" rx="8" fill="#2563eb"/>
+            <path d="M7 21L14 7L21 21" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M9.5 16.5H18.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+          </svg>        
         </div>
-        <span className="text-xs text-white/30">v1.0.0</span>
+        <div className="flex items-center gap-4">
+          {username ? (
+            <>
+            {!localStorage.getItem('isGuest') && (
+              <button
+                onClick={loadHistory}
+                className="text-xs text-white/40 hover:text-white/70 transition-colors"
+              >
+                History
+              </button>
+            )}
+              <span className="text-xs text-white/40">{username}</span>
+              <button
+                onClick={handleLogout}
+                className="text-xs text-white/40 hover:text-white/70 transition-colors"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => router.push('/auth')}
+              className="text-xs bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Sign in
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="max-w-4xl mx-auto px-8 py-16">
-        {/* Hero */}
         <div className="text-center mb-14">
           <h1 className="text-5xl font-bold tracking-tight mb-4 bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
             Describe UI,<br />watch it appear.
@@ -47,7 +127,6 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Input */}
         <div className="relative mb-4">
           <input
             type="text"
@@ -55,7 +134,7 @@ export default function Home() {
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
             placeholder="e.g. a signup form with name, email, and a submit button"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500/50 focus:bg-white/8 transition-all pr-32"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500/50 transition-all pr-32"
           />
           <button
             onClick={handleGenerate}
@@ -74,7 +153,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Example prompts */}
         <div className="flex gap-2 flex-wrap mb-12">
           {[
             'login form with email and password',
@@ -98,7 +176,35 @@ export default function Home() {
           </div>
         )}
 
-        {/* Preview */}
+        {showHistory && history.length > 0 && (
+          <div className="border border-white/10 rounded-2xl overflow-hidden mb-8">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
+              <span className="text-xs text-white/40">Generation History</span>
+              <button onClick={() => setShowHistory(false)} className="text-xs text-white/30 hover:text-white/60">✕</button>
+            </div>
+            <div className="divide-y divide-white/5">
+              {history.map((item: any) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setPrompt(item.prompt)
+                    if (item.schema) {
+                      try { setSchema(JSON.parse(item.schema)) } catch {}
+                    }
+                    setShowHistory(false)
+                  }}
+                  className="w-full text-left px-5 py-3 hover:bg-white/5 transition-colors"
+                >
+                  <p className="text-sm text-white/70">{item.prompt}</p>
+                  <p className="text-xs text-white/30 mt-0.5">
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {schema && (
           <div className="border border-white/10 rounded-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/3">
@@ -111,10 +217,11 @@ export default function Home() {
               <div className="w-16"/>
             </div>
             <div className="bg-white p-8">
-              <DSLRenderer schema={schema} />
+              <DSLRenderer schema={schema} prompt={prompt} />
             </div>
           </div>
         )}
+
         {schema && <CodeExport schema={schema} />}
       </div>
     </main>
