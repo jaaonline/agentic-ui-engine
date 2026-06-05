@@ -17,6 +17,7 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false)
   const [history, setHistory] = useState<any[]>([])
   const [fromHistory, setFromHistory] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function Home() {
         return
       }
       setUsername(storedUsername || 'Guest')
+      setMounted(true)
     }
   }, [])
 
@@ -77,6 +79,8 @@ export default function Home() {
     window.location.href = '/auth'
   }
 
+  if (!mounted) return null
+  
   return (
     <main className="min-h-screen bg-[#0f0f0f] text-white">
       <header className="border-b border-white/10 px-8 py-4 flex items-center justify-between">
