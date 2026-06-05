@@ -20,7 +20,7 @@ Type a sentence. Get a working UI component.
 
 Agentic UI Engine turns natural language into interactive React components. Describe what you want, and the system generates a live preview plus exportable code — powered by a custom Component DSL that maps AI output to real UI.
 
-Built as a full-stack project to explore AI-driven developer tooling, cross-platform architecture, and prompt engineering.
+Built as a full-stack microservice project featuring AI-driven UI generation, cross-platform rendering, and a complete user system with persistent history.
 
 ## Features
 
@@ -28,7 +28,10 @@ Built as a full-stack project to explore AI-driven developer tooling, cross-plat
 - Interactive components — form validation, button actions, state management
 - One-click code export (React + Tailwind)
 - 13 component types: Button, Input, Card, List, Badge, Hero, Stat, Avatar, Divider, Table, Navbar, Alert, Progress
-- Monorepo structure with shared logic across Web and Mobile
+- User authentication with JWT (register, login, guest mode)
+- Generation history saved per user
+- Cross-platform — Web (Next.js) and Mobile (React Native / Expo)
+- Microservice architecture: Node.js AI service + Spring Boot user service
 
 ## Stack
 
@@ -36,9 +39,12 @@ Built as a full-stack project to explore AI-driven developer tooling, cross-plat
 |---|---|
 | Frontend | Next.js 14, TypeScript, Tailwind CSS |
 | Mobile | Expo (React Native) |
-| Backend | Node.js, Express |
-| AI | OpenAI GPT-4o |
-| Infra | Vercel + Railway |
+| AI Service | Node.js, Express, OpenAI GPT-4o |
+| User Service | Spring Boot 3.5, Java 21, JWT |
+| Database | PostgreSQL, Spring Data JPA |
+| Infra | Vercel (frontend) + Railway (backend + DB) |
+| Testing | Jest, React Testing Library |
+| CI/CD | GitHub Actions |
 
 ## How it works
 
@@ -69,10 +75,15 @@ git clone https://github.com/jaaonline/agentic-ui-engine.git
 cd agentic-ui-engine
 npm install
 
-# Backend
+# Node.js AI service
 cp backend/.env.example backend/.env
 # Add OPENAI_API_KEY to backend/.env
 cd backend && npm run dev
+
+# Spring Boot user service
+cd java-backend
+# Configure PostgreSQL in src/main/resources/application.properties
+./mvnw spring-boot:run
 
 # Frontend (new terminal)
 cd apps/web && npm run dev
@@ -84,10 +95,13 @@ cd apps/mobile && npx expo start
 ## Structure
 
 ```
-├── apps/web        # Next.js frontend
-├── apps/mobile     # Expo React Native app
-├── packages/shared # Shared hooks and types
-└── backend         # Express API + AI service
+├── apps/
+│   ├── web/          # Next.js frontend
+│   └── mobile/       # Expo React Native app
+├── backend/          # Node.js AI generation service
+├── java-backend/     # Spring Boot user & history service
+├── packages/shared/  # Shared types and hooks
+└── .github/workflows # CI/CD pipeline
 ```
 
 ---
