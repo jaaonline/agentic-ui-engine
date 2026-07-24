@@ -28,7 +28,7 @@ Built as a full-stack microservice project featuring AI-driven UI generation, cr
 
 - Natural language → rendered UI in ~5–10 seconds (simple requests are faster; complex ones that trigger history search and validation take longer — this is the trade-off of a multi-step agent pipeline vs. a single call)
 - Task decomposition — requests are broken into an explicit component plan before generation, so multi-part asks (e.g. "a dashboard with stats, a table, and a login form") don't get lost in one big prompt
-- Tool calling — the model can call search_component_history mid-generation to check the user's past generations for something similar, rather than generating a near-duplicate from scratch
+- Tool calling — built with LangChain's `createAgent`; the model can call a `search_component_history` tool mid-generation to check the user's past generations for something similar, rather than generating a near-duplicate from scratch
 - RAG-based history retrieval — history matching is semantic (OpenAI embeddings + cosine similarity), not keyword matching, so differently-worded but similar requests (e.g. "sign-in form" vs. "form to authenticate") still get matched
 - Plan validation & repair — after generation, the output is checked against the component plan; anything missing triggers a targeted follow-up call to add just the missing pieces
 - Interactive components — form validation, button actions, state management
@@ -45,7 +45,7 @@ Built as a full-stack microservice project featuring AI-driven UI generation, cr
 |---|---|
 | Frontend | Next.js 14, TypeScript, Tailwind CSS |
 | Mobile | Expo (React Native) |
-| AI Service | Node.js, Express, OpenAI GPT-4o |
+| AI Service | Node.js, Express, LangChain, OpenAI GPT-4o |
 | User Service | Spring Boot 3.5, Java 21, JWT |
 | Database | PostgreSQL, Spring Data JPA |
 | Infra | Vercel (frontend) + Railway (backend + DB) |
@@ -59,7 +59,7 @@ The core is a Component DSL — a JSON schema designed to bridge natural languag
 ```
 Prompt
   → Plan (gpt-4o-mini decomposes the request into a component list)
-  → Generate (gpt-4o, with a search_component_history tool it can call)
+  → Generate (LangChain agent — gpt-4o with a search_component_history tool it can call)
       → if called: embed query + past prompts, cosine-similarity match, feed results back
   → Validate against the plan, repair any missing components
   → Component DSL (JSON) → React / React Native
