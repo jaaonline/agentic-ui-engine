@@ -20,11 +20,17 @@ Type a sentence. Get a working UI component.
 
 Agentic UI Engine turns natural language into interactive React components. Describe what you want, and the system generates a live preview plus exportable code — powered by a custom Component DSL that maps AI output to real UI.
 
+Generation isn't a single prompt-in, JSON-out call: each request goes through a small agent workflow — the request is decomposed into a component plan, the model can call a tool to check the user's past generations for something reusable, and the output is validated against the plan and repaired if anything's missing.
+
 Built as a full-stack microservice project featuring AI-driven UI generation, cross-platform rendering, and a complete user system with persistent history.
 
 ## Features
 
-- Natural language → rendered UI in under 3 seconds
+- Natural language → rendered UI in ~5–10 seconds (simple requests are faster; complex ones that trigger history search and validation take longer — this is the trade-off of a multi-step agent pipeline vs. a single call)
+- Task decomposition — requests are broken into an explicit component plan before generation, so multi-part asks (e.g. "a dashboard with stats, a table, and a login form") don't get lost in one big prompt
+- Tool calling — the model can call search_component_history mid-generation to check the user's past generations for something similar, rather than generating a near-duplicate from scratch
+- RAG-based history retrieval — history matching is semantic (OpenAI embeddings + cosine similarity), not keyword matching, so differently-worded but similar requests (e.g. "sign-in form" vs. "form to authenticate") still get matched
+- Plan validation & repair — after generation, the output is checked against the component plan; anything missing triggers a targeted follow-up call to add just the missing pieces
 - Interactive components — form validation, button actions, state management
 - One-click code export (React + Tailwind)
 - 13 component types: Button, Input, Card, List, Badge, Hero, Stat, Avatar, Divider, Table, Navbar, Alert, Progress
@@ -48,10 +54,15 @@ Built as a full-stack microservice project featuring AI-driven UI generation, cr
 
 ## How it works
 
-The core is a **Component DSL** — a JSON schema designed to bridge natural language and rendered UI components.
+The core is a Component DSL — a JSON schema designed to bridge natural language and rendered UI components. Generation runs as a short pipeline rather than one call:
 
 ```
-Prompt → GPT-4o → Component DSL (JSON) → React / React Native
+Prompt
+  → Plan (gpt-4o-mini decomposes the request into a component list)
+  → Generate (gpt-4o, with a search_component_history tool it can call)
+      → if called: embed query + past prompts, cosine-similarity match, feed results back
+  → Validate against the plan, repair any missing components
+  → Component DSL (JSON) → React / React Native
 ```
 
 ```json
