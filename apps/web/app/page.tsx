@@ -38,10 +38,10 @@ export default function Home() {
     setLoading(true)
     setError('')
     try {
-      const result = await generateUI(prompt)
+      const userId = localStorage.getItem('userId')
+      const result = await generateUI(prompt, userId ? Number(userId) : undefined)
       setSchema(result)
 
-      const userId = localStorage.getItem('userId')
       if (userId) {
         await fetch(`${JAVA_API}/api/history/save`, {
           method: 'POST',
