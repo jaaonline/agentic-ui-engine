@@ -1,4 +1,8 @@
 import OpenAI from 'openai'
+import { ChatOpenAI } from '@langchain/openai'
+import { DynamicStructuredTool } from '@langchain/core/tools'
+import { createAgent } from 'langchain'
+import { z } from 'zod'
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -6,30 +10,28 @@ const client = new OpenAI({
 
 const JAVA_BACKEND_URL = process.env.JAVA_BACKEND_URL || 'http://localhost:8080'
 
-// Tool definition exposed to the model. The model decides on its own
-// whether a given prompt is worth checking against past generations —
-// e.g. "login form" is worth checking, "a UI with a pink dinosaur" isn't.
-const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
-  {
-    type: 'function',
-    function: {
-      name: 'search_component_history',
-      description:
-        "Search the current user's past generations for a component similar to what they're asking for now, so it can be reused or adapted instead of generated from scratch.",
-      parameters: {
-        type: 'object',
-        properties: {
-          queryText: {
-            type: 'string',
-            description:
-              'A natural-language description of the component being requested, e.g. "a login form with email and password fields"',
-          },
-        },
-        required: ['queryText'],
-      },
+// LangChain tool the agent can call mid-generation. Built per-request so it
+// can close over the current user's id — guests get no tool at all, since
+// there's no history to search.
+function buildHistoryTool(userId: number) {
+  return new DynamicStructuredTool({
+    name: 'search_component_history',
+    description:
+      "Search the current user's past generations for a component similar to what they're asking for now, so it can be reused or adapted instead of generated from scratch.",
+    schema: z.object({
+      queryText: z
+        .string()
+        .describe('A natural-language description of the component being requested, e.g. "a login form with email and password fields"'),
+    }),
+    func: async ({ queryText }) => {
+      const history = await fetchUserHistory(userId)
+      const matches = await findSimilarHistory(history, queryText)
+      return matches.length
+        ? JSON.stringify(matches.map((m) => ({ prompt: m.prompt, schema: m.schema })))
+        : 'No similar past components found.'
     },
-  },
-]
+  })
+}
 
 interface HistoryEntry {
   prompt: string
@@ -287,65 +289,35 @@ export async function generateComponentSchema(userPrompt: string, userId?: numbe
         .join('\n')}`
     : ''
 
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: 'system', content: SYSTEM_PROMPT + planContext },
-    { role: 'user', content: userPrompt },
-  ]
+  const systemPrompt = SYSTEM_PROMPT + planContext
 
-  // Step 2: generate, with the existing tool-calling flow for history reuse.
-  const firstResponse = await client.chat.completions.create({
-    model: 'gpt-4o',
-    messages,
-    tools: userId ? tools : undefined,
+  // Step 2: generate via a LangChain agent. Guests (no userId) get an agent
+  // with no tools at all — there's no history to search, and a tool-less
+  // agent just behaves like a normal single LLM call.
+  const model = new ChatOpenAI({ model: 'gpt-4o', temperature: 0 })
+  const historyTool = userId ? [buildHistoryTool(userId)] : []
+
+  const agent = createAgent({ model, tools: historyTool, systemPrompt })
+
+  const result = await agent.invoke({
+    messages: [{ role: 'human', content: userPrompt }],
   })
 
-  const message = firstResponse.choices[0].message
-  const toolCalls = (message.tool_calls ?? []).filter(
-    (tc): tc is OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall => tc.type === 'function'
-  )
-
-  let content = message.content || ''
-
-  if (toolCalls.length > 0) {
-    messages.push(message)
-
-    for (const toolCall of toolCalls) {
-      if (toolCall.function.name === 'search_component_history' && userId) {
-        const { queryText } = JSON.parse(toolCall.function.arguments) as { queryText: string }
-        const history = await fetchUserHistory(userId)
-        const matches = await findSimilarHistory(history, queryText)
-        console.log('RAG query:', queryText, '-> matches:', matches.map(m => m.prompt))
-
-        messages.push({
-          role: 'tool',
-          tool_call_id: toolCall.id,
-          content: matches.length
-            ? JSON.stringify(matches.map((m) => ({ prompt: m.prompt, schema: m.schema })))
-            : 'No similar past components found.',
-        })
-      } else {
-        // Every tool_call_id must get a response or the next API call is
-        // rejected outright — even calls we don't recognize or can't run.
-        messages.push({
-          role: 'tool',
-          tool_call_id: toolCall.id,
-          content: 'Tool unavailable.',
-        })
-      }
-    }
-
-    const secondResponse = await client.chat.completions.create({
-      model: 'gpt-4o',
-      messages,
-    })
-    content = secondResponse.choices[0].message.content || ''
-  }
+  const lastMessage = result.messages[result.messages.length - 1]
+  const content = (typeof lastMessage.content === 'string' ? lastMessage.content : '') as string
 
   const cleaned = content.replace(/```json|```/g, '').trim()
   let raw = JSON.parse(cleaned)
 
-  // Step 3: validate against the plan and repair anything missing.
-  raw = await repairMissingComponents(raw, plan, messages)
+  // Step 3: validate against the plan and repair anything missing. Repair
+  // uses a fresh, minimal message history — it only needs the last output
+  // and a targeted follow-up, not the agent's internal tool-call trace.
+  const repairMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+    { role: 'assistant', content },
+  ]
+  raw = await repairMissingComponents(raw, plan, repairMessages)
 
   return normalizeSchema(raw)
 }
